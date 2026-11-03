@@ -1,0 +1,7 @@
+/.bundle/
+/vendor/bundle/
+*.gem
+.work/
+_site/
+.jekyll-cache/
+.sass-cache/

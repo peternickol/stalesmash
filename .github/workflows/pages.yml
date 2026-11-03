@@ -1,0 +1,74 @@
+name: Build and deploy Jekyll site
+
+on:
+  workflow_call:
+    inputs:
+      ruby-version:
+        description: Ruby version used when the site has no .ruby-version file.
+        required: false
+        type: string
+        default: "3.3"
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Full history. The version is the commit that last changed each file.
+          fetch-depth: 0
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ inputs.ruby-version }}
+          bundler-cache: true
+
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v6
+
+      - name: Build
+        run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
+        env:
+          JEKYLL_ENV: production
+          STALESMASH_DISABLE: "1"
+
+      - name: Checkout StaleSmash
+        uses: actions/checkout@v7
+        with:
+          # The commit this workflow was called with. A caller that pins the
+          # workflow pins the stamp too. An empty value keeps @master.
+          repository: ${{ job.workflow_repository || 'peternickol/stalesmash' }}
+          ref: ${{ job.workflow_sha || 'master' }}
+          path: .stalesmash
+          persist-credentials: false
+
+      - name: Cache bust
+        run: ruby -I.stalesmash/lib .stalesmash/exe/stalesmash --source . --dest _site --baseurl "${{ steps.pages.outputs.base_path }}"
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5

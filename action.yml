@@ -1,0 +1,32 @@
+name: StaleSmash
+description: Stamp built asset URLs with the commit that last changed each file.
+
+inputs:
+  source:
+    description: Site root, where the git history lives.
+    required: false
+    default: .
+  destination:
+    description: Built site to crawl.
+    required: false
+    default: _site
+  baseurl:
+    description: >
+      Prefix for root-absolute URLs, such as /docs.
+      Leave this at the default to read baseurl from _config.yml.
+      Pass an empty string when the site is served with no prefix.
+    required: false
+    default: "__config__"
+
+runs:
+  using: composite
+  steps:
+    - name: Stamp asset URLs
+      shell: bash
+      working-directory: ${{ inputs.source }}
+      run: |
+        args=(--source "${{ inputs.source }}" --dest "${{ inputs.destination }}")
+        if [ "${{ inputs.baseurl }}" != "__config__" ]; then
+          args+=(--baseurl "${{ inputs.baseurl }}")
+        fi
+        ruby -I"${{ github.action_path }}/lib" "${{ github.action_path }}/exe/stalesmash" "${args[@]}"
