@@ -836,6 +836,21 @@ class StaleSmashTest < Minitest::Test
     assert_equal script, File.read(File.join(dest, "app.js"))
   end
 
+  def test_hash_template_is_not_an_asset_path
+    write_files(@root, {
+      "index.html" => "<script src=\"/app.js\"></script>\n",
+      "app.js" => "const hash = `#${id}`;\nconst file = `/img/a.png`;\n",
+      "img/a.png" => "a"
+    })
+    commit_site(@root)
+    image = last_commit(@root, "img/a.png")
+    dest = publish_copy(@root)
+    script = File.read(File.join(dest, "app.js"))
+    assert_includes script, "`#${id}`"
+    assert_includes script, "/img/a.png?v=#{image}"
+    refute_includes script, "#${id}?v="
+  end
+
   def test_generated_feed_follows_content_and_referenced_assets
     write_files(@root, {
       "index.html" => "<a href=\"/feed.xml\">Feed</a><img src=\"/img/a.png\"><video src=\"/video/tour.mp4\"></video>\n",

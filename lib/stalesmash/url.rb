@@ -354,6 +354,8 @@ module StaleSmash
     end
 
     def restore_hash(value)
+      return nil if value.nil?
+
       value.gsub("\u0001", "#")
     end
 
